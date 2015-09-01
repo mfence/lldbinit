@@ -13,27 +13,26 @@
 Commands which are implemented:
 	stepo       - step over some instructions (call/movs/stos/cmps/loop)
 	dd          - dump hex data at certain address (keep compatibility with .gdbinit)
-		      this shoud be db command
+		          this shoud be db command
 	ctx/context - dump registers and assembly
-	lb	    - load breakpoints from file and apply them (currently only func names are applied)	 
+	lb	        - load breakpoints from file and apply them (currently only func names are applied)	 
 	lb_rva	    - load breakpoints from file and apply to main executable, only RVA in this case
-		      and command will determine main program base and apply breaks	
-	u	    - dump instructions at certain address (SoftICE like u command style)
+		          and command will determine main program base and apply breaks	
+	u	        - dump instructions at certain address (SoftICE like u command style)
 	ddword	    - dump data as dword 
-	dq	    - dump data as qword
-	dw	    - dump data as word
+	dq	        - dump data as qword
+	dw	        - dump data as word
 	iphone	    - connect to debugserver running on iPhone 
 	findmem	    - command to search memory 
-		      [options]
-		      -s searches for specified string
-		      -u searches for specified unicode string
-                      -b searches binary (eg. -b 4142434445 will find ABCDE anywhere in mem)
-		      -d searches dword  (eg. -d 0x41414141)
-                      -q searches qword  (eg. -d 0x4141414141414141)
-		      -f loads patern from file if it's tooooo big to fit into any of specified
-                         options
-		      -c specify if you want to find N occurances (default is all)
-	bt	    - broken... and removed, now thread/frame information is by default shown on every
+		          [options]
+		            -s searches for specified string
+		            -u searches for specified unicode string
+                    -b searches binary (eg. -b 4142434445 will find ABCDE anywhere in mem)
+		            -d searches dword  (eg. -d 0x41414141)
+                    -q searches qword  (eg. -d 0x4141414141414141)
+		            -f loads patern from file if it's tooooo big to fit into any of specified options
+		            -c specify if you want to find N occurances (default is all)
+	bt	        - broken... and removed, now thread/frame information is by default shown on every
 	              hook-stop by lldb itself...
 
 	hook-stop can be added only when target exists, before it's not possible (maybe in later versions
@@ -145,11 +144,12 @@ hook_stop_added = 0;
 
 def	wait_for_hook_stop():
 	while True:
-		#print("Waiting...");
+		# print("Waiting...");
 		res = lldb.SBCommandReturnObject();
 		lldb.debugger.GetCommandInterpreter().HandleCommand("target stop-hook add -o \"HandleHookStopOnTarget\"", res);
 		if res.Succeeded() == True:
 			return;
+
 		time.sleep(0.05);
 
 def	__lldb_init_module(debugger, internal_dict):
@@ -164,12 +164,15 @@ def	__lldb_init_module(debugger, internal_dict):
 		.lldbinit 2 times, thus this dirty hack is here to prevent doulbe loading...
 		if somebody knows better way, would be great to know :)
 	'''	
-	var = lldb.debugger.GetInternalVariableValue("stop-disassembly-count", lldb.debugger.GetInstanceName());
+	var = lldb.debugger.GetInternalVariableValue("stop-disassembly-count", lldb.debugger.GetInstanceName())
+
 	if var.IsValid():
-		var = var.GetStringAtIndex(0);
+		var = var.GetStringAtIndex(0)
+
 		if var == "0":
-			return;	
-	res = lldb.SBCommandReturnObject();
+			return
+            
+	res = lldb.SBCommandReturnObject()
         
 	lldb.debugger.GetCommandInterpreter().HandleCommand("settings set target.x86-disassembly-flavor intel", res);
 	lldb.debugger.GetCommandInterpreter().HandleCommand("command script add -f lldbinit.stepo stepo", res);                               
@@ -203,8 +206,9 @@ def	__lldb_init_module(debugger, internal_dict):
 
 
 def	get_arch():
-	return lldb.debugger.GetSelectedTarget().triple.split('-')[0];
-def 	get_frame():
+	return lldb.debugger.GetSelectedTarget().triple.split('-')[0]
+
+def get_frame():
         #return lldb.debugger.GetSelectedTarget().process.selected_thread.GetSelectedFrame(); 
 	#return lldb.debugger.GetSelectedTarget().GetProcess().GetSelectedThread().GetSelectedFrame()
 	#return lldb.debugger.GetTargetAtIndex(0).process.selected_thread.GetFrameAtIndex(0);
@@ -231,16 +235,20 @@ def     evaluate(command):
                 return None;
 
 def	is_i386():
-	arch = get_arch();
-	if arch[0:1] == "i":
-		return True;
-	return False;
+    arch = get_arch()
+    
+    if arch[0:1] == "i":
+        return True
+        
+    return False
 
 def	is_x64():
-	arch = get_arch();
-	if arch == "x86_64":
-		return True;
-	return False;
+    arch = get_arch()
+    
+    if arch == "x86_64":
+        return True
+        
+    return False
 
 def	is_arm():
 	arch = get_arch();
@@ -253,9 +261,11 @@ def	get_pointer_size():
 	return poisz;
 
 def	color_reset():
-	output("\033[0m");
+	output("\033[0m")
+
 def	color_bold():
-	output("\033[1m");
+	output("\033[1m")
+
 def	color_underline():
 	output("\033[4m");
 
@@ -1045,125 +1055,145 @@ def get_GPRs():
     """
     return get_registers("general purpose")
 
-def	HandleHookStopOnTarget(debugger, command, result, dict):
-	# Don't display anything if we're inside Xcode
-	if os.getenv('PATH').startswith('/Applications/Xcode.app'):
-		return
-	
-	global GlobalListOutput;
-	global arm_type;
-	
-	debugger.SetAsync(True);	
-	frame = get_frame();
-	if not frame: return;
+def HandleHookStopOnTarget(debugger, command, result, dict):
+    # Don't display anything if we're inside Xcode
+    if os.getenv('PATH').startswith('/Applications/Xcode.app'):
+        return
+    
+    global GlobalListOutput
+    global arm_type
+    
+    debugger.SetAsync(True)
+    frame = get_frame()
+    
+    if not frame:
+        return
 	        
-	thread= frame.GetThread();
-	while True:	
-		frame = get_frame();
-		thread = frame.GetThread();
-		#print("----------------------------------");
-		#for t in get_process():
-		#	print("Thread stop reason : %d" % (t.GetStopReason()));
+	thread = frame.GetThread()
+    
+    while True:
+        frame = get_frame()
+        thread = frame.GetThread()
+        # print("----------------------------------")
+        # for t in get_process():
+        #   print("Thread stop reason : %d" % (t.GetStopReason()))
+    
+        if thread.GetStopReason() == lldb.eStopReasonNone or thread.GetStopReason() == lldb.eStopReasonInvalid:
+            time.sleep(0.001)
+        else:
+            break
+    
+    GlobalListOutput = []
+    arch = get_arch()
+    
+    if not is_i386() and not is_x64() and not is_arm():
+		# this is for ARM probably in the future... when I will need it...
+        print("Unknown architecture : " + arch)
+        return
+    
+    output("\n")
+    color(COLOR_SEPARATOR)
+    
+    if is_i386() or is_arm():
+        output("---------------------------------------------------------------------------------")
+    elif is_x64():
+        output("-----------------------------------------------------------------------------------------------------------------------")
+    
+    color_bold()
+    output("[regs]\n")
+    color_reset()
+    print_registers()
+
+    color(COLOR_SEPARATOR)
+    
+    if is_i386() or is_arm():
+        output("---------------------------------------------------------------------------------")
+    elif is_x64():
+        output("-----------------------------------------------------------------------------------------------------------------------")
         
-		if thread.GetStopReason() == lldb.eStopReasonNone or thread.GetStopReason() == lldb.eStopReasonInvalid: 
-			time.sleep(0.001);
-		else:
-			break;
-	
-	GlobalListOutput = [];
-	
-	arch = get_arch();
-	if not is_i386() and not is_x64() and not is_arm():
-		#this is for ARM probably in the future... when I will need it...
-		print("Unknown architecture : " + arch);
-		return;
-	
-	output("\n");
-	color(COLOR_SEPARATOR);
-	if is_i386() or is_arm():
-        	output("---------------------------------------------------------------------------------");
-	elif is_x64():
-	        output("-----------------------------------------------------------------------------------------------------------------------");
-	        
-	color_bold();
-	output("[regs]\n");
-	color_reset();
-	print_registers();
-	
-	color(COLOR_SEPARATOR);
-	if is_i386() or is_arm():
-        	output("---------------------------------------------------------------------------------");
-	elif is_x64():
-	        output("-----------------------------------------------------------------------------------------------------------------------");
-	color_bold();
-	output("[code]\n");
-	color_reset();
-	
-	if is_i386():
-        	pc = get_register("eip");
-	elif is_x64():
-	        pc = get_register("rip");
-	elif is_arm():
-		pc = get_register("pc");        
-	
-        res = lldb.SBCommandReturnObject();
-        if is_arm():
-		cpsr = int(get_register("cpsr"), 16); 
-		t = (cpsr >> 5) & 1;
-		if t:
-			#it's thumb
-			arm_type = "thumbv7-apple-ios"; 
-		else:
-			arm_type = "armv7-apple-ios";
-		lldb.debugger.GetCommandInterpreter().HandleCommand("disassemble -A " + arm_type + " --start-address=" + pc + " --count=8", res)
-       	else:
-		lldb.debugger.GetCommandInterpreter().HandleCommand("disassemble --start-address=" + pc + " --count=8", res);
-	data = res.GetOutput(); 
-	#split lines... and mark currently executed code...
-	data = data.split("\n");
-	#detemine what to hl, as sometimes lldb won't put => into stoped thread... well...
-	#need to check if first sym is => or '  ' which means this is name without symol
-	#symbols are stored 1st so here we go...
-	line_to_hl = 0;
-	#if data[0][0:2] == "->":
+    color_bold()
+    output("[code]\n")
+    color_reset()
+    
+    if is_i386():
+        pc = get_register("eip")
+
+    elif is_x64():
+        pc = get_register("rip")
+
+    elif is_arm():
+        pc = get_register("pc")
+        
+    res = lldb.SBCommandReturnObject()
+    
+    if is_arm():
+        cpsr = int(get_register("cpsr"), 16)
+        t = (cpsr >> 5) & 1
+        
+        if t:
+            # it's thumb
+            arm_type = "thumbv7-apple-ios"
+        else:
+            arm_type = "armv7-apple-ios"
+            
+        lldb.debugger.GetCommandInterpreter().HandleCommand("disassemble -A " + arm_type + " --start-address=" + pc + " --count=8", res)
+    else:
+        lldb.debugger.GetCommandInterpreter().HandleCommand("disassemble --start-address=" + pc + " --count=8", res)
+
+    data = res.GetOutput()
+	# split lines... and mark currently executed code...
+    # data is always empty in gdb stub mode
+    data = data.split("\n")
+	# detemine what to hl, as sometimes lldb won't put => into stoped thread... well...
+	# need to check if first sym is => or '  ' which means this is name without symol
+	# symbols are stored 1st so here we go...
+    line_to_hl = 0
+	# if data[0][0:2] == "->":
 	#	line_to_hl = 0;
-	#if data[0][0:2] != '  ':
+	# if data[0][0:2] != '  ':
 	#	line_to_hl = 1;
 	
 	#now we look when pc is held in disassembly and we color only that line	
-	pc_text = int(str(pc).strip().split()[0], 16);
-	pc_text = hex(pc_text);
-	#print(pc_text);
-	for idx,x in enumerate(data):
-		if pc_text in x:
-			line_to_hl = idx;
-			break;
-	for idx,x in enumerate(data):
-		if line_to_hl == idx: #x[0:2] == "->" and idx < 3:
-			color(COLOR_HIGHLIGHT_LINE);
-			color_bold();
-			output(x);
-			color_reset();
-		else:
-			output(x);
-		output("\n");
-	#output(res.GetOutput());
-        color(COLOR_SEPARATOR);
-        if get_pointer_size() == 4: #is_i386() or is_arm():
-                output("---------------------------------------------------------------------------------------");
-        elif get_pointer_size() == 8: #is_x64():
-                output("-----------------------------------------------------------------------------------------------------------------------------");
-        color_reset();
-       	output("\n");
-	
-	output("Stop reason : " + str(thread.GetStopDescription(100))); #str(lldb.debugger.GetSelectedTarget().process.selected_thread.GetStopDescription(100)));
-        output("\r");	
-	data = "".join(GlobalListOutput);
-	
-	result.PutCString(data);
-	result.SetStatus(lldb.eReturnStatusSuccessFinishResult);  
-	return 0;
-	
+    pc_text = int(str(pc).strip().split()[0], 16)
+    pc_text = hex(pc_text)
+	# print(pc_text)
+
+    for idx,x in enumerate(data):
+        if pc_text in x:
+            line_to_hl = idx
+            break
+
+    for idx,x in enumerate(data):
+        if line_to_hl == idx: # x[0:2] == "->" and idx < 3:
+            color(COLOR_HIGHLIGHT_LINE)
+            color_bold()
+            output(x)
+            color_reset()
+        else:
+            output(x)
+        
+        output("\n")
+    
+    # output(res.GetOutput())
+    color(COLOR_SEPARATOR)
+
+    if get_pointer_size() == 4: # is_i386() or is_arm():
+        output("---------------------------------------------------------------------------------------")
+    elif get_pointer_size() == 8: # is_x64():
+        output("-----------------------------------------------------------------------------------------------------------------------------")
+
+    color_reset()
+    output("\n")
+    
+    output("Stop reason : " + str(thread.GetStopDescription(100)))
+    # str(lldb.debugger.GetSelectedTarget().process.selected_thread.GetStopDescription(100)))
+    output("\r")
+    data = "".join(GlobalListOutput)
+    
+    result.PutCString(data)
+    result.SetStatus(lldb.eReturnStatusSuccessFinishResult)
+    return 0
+
 def	LoadBreakPointsRva(debugger, command, result, dict):
 	global	GlobalOutputList;
 	GlobalOutputList = [];
