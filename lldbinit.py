@@ -220,15 +220,20 @@ def 	get_frame():
 def	get_process():
 	return lldb.debugger.GetSelectedTarget().process; #GetTargetAtIndex(0).process;
 
-def     evaluate(command):
-        value = get_frame().EvaluateExpression(command);
-        if value.IsValid() == False:
-                return None;
-        try:
-                value = long(value.GetValue(), 10);
-                return value;
-        except:
-                return None;
+def evaluate(command):
+    try:
+        value = get_frame().EvaluateExpression(command)
+    except:
+        return None
+    
+    if value.IsValid() == False:
+        return None
+        
+    try:
+        value = long(value.GetValue(), 10)
+        return value
+    except:
+        return None
 
 def	is_i386():
 	arch = get_arch();
